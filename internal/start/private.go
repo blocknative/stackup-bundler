@@ -62,12 +62,21 @@ func PrivateMode() {
 	}
 
 	check := checks.New(
+		db,
 		rpc,
 		conf.MaxVerificationGas,
 		conf.MaxOpsForUnstakedSender,
 		conf.BundlerCollectorTracer,
 	)
+
 	relayer := relay.New(db, eoa, eth, chain, beneficiary, logr)
+	if conf.RelayerBannedThreshold > 0 {
+		relayer.SetBannedThreshold(conf.RelayerBannedThreshold)
+	}
+	if conf.RelayerBannedTimeWindow > 0 {
+		relayer.SetBannedTimeWindow(conf.RelayerBannedTimeWindow)
+	}
+
 	paymaster := paymaster.New(db)
 
 	// Init Client
@@ -88,9 +97,11 @@ func PrivateMode() {
 	b := bundler.New(mem, chain, conf.SupportedEntryPoints)
 	b.UseLogger(logr)
 	b.UseModules(
+		check.CodeHashes(),
 		check.PaymasterDeposit(),
 		relayer.SendUserOperation(),
 		paymaster.IncOpsIncluded(),
+		check.Clean(),
 	)
 	if err := b.Run(); err != nil {
 		log.Fatal(err)
@@ -100,6 +111,7 @@ func PrivateMode() {
 	var d *client.Debug
 	if conf.DebugMode {
 		d = client.NewDebug(eoa, eth, mem, b, chain, conf.SupportedEntryPoints[0], beneficiary)
+		b.SetMaxBatch(1)
 		relayer.SetBannedThreshold(relay.NoBanThreshold)
 	}
 
@@ -117,12 +129,14 @@ func PrivateMode() {
 	r.GET("/ping", func(g *gin.Context) {
 		g.Status(http.StatusOK)
 	})
-	r.POST(
-		"/",
+	handlers := []gin.HandlerFunc{
 		relayer.FilterByClientID(),
 		jsonrpc.Controller(client.NewRpcAdapter(c, d)),
 		relayer.MapUserOpHashToClientID(),
-	)
+	}
+	r.POST("/", handlers...)
+	r.POST("/rpc", handlers...)
+
 	if err := r.Run(fmt.Sprintf(":%d", conf.Port)); err != nil {
 		log.Fatal(err)
 	}

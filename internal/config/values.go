@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,10 @@ type Values struct {
 	MaxVerificationGas      *big.Int
 	MaxOpsForUnstakedSender int
 	Beneficiary             string
+
+	// Private mode variables.
+	RelayerBannedThreshold  int
+	RelayerBannedTimeWindow time.Duration
 
 	// Searcher mode variables.
 	EthBuilderUrl     string
@@ -53,11 +58,11 @@ func GetValues() *Values {
 	// Default variables
 	viper.SetDefault("erc4337_bundler_port", 4337)
 	viper.SetDefault("erc4337_bundler_data_directory", "/tmp/stackup_bundler")
-	viper.SetDefault("erc4337_bundler_supported_entry_points", "0x0F46c65C17AA6b4102046935F33301f0510B163A")
+	viper.SetDefault("erc4337_bundler_supported_entry_points", "0x0576a174D229E3cFA37253523E645A78A0C91B57")
 	viper.SetDefault("erc4337_bundler_max_verification_gas", 1500000)
 	viper.SetDefault("erc4337_bundler_max_ops_for_unstaked_sender", 4)
-	viper.SetDefault("erc4337_bundler_debug_mode", false)
 	viper.SetDefault("erc4337_bundler_blocks_in_the_future", 25)
+	viper.SetDefault("erc4337_bundler_debug_mode", false)
 	viper.SetDefault("erc4337_bundler_gin_mode", gin.ReleaseMode)
 
 	// Read in from .env file if available
@@ -82,8 +87,11 @@ func GetValues() *Values {
 	_ = viper.BindEnv("erc4337_bundler_beneficiary")
 	_ = viper.BindEnv("erc4337_bundler_max_verification_gas")
 	_ = viper.BindEnv("erc4337_bundler_max_ops_for_unstaked_sender")
+	_ = viper.BindEnv("erc4337_bundler_relayer_banned_threshold")
+	_ = viper.BindEnv("erc4337_bundler_relayer_banned_time_window")
 	_ = viper.BindEnv("erc4337_bundler_eth_builder_url")
 	_ = viper.BindEnv("erc4337_bundler_blocks_in_the_future")
+	_ = viper.BindEnv("erc4337_bundler_debug_mode")
 	_ = viper.BindEnv("erc4337_bundler_gin_mode")
 
 	// Validate required variables
@@ -125,6 +133,8 @@ func GetValues() *Values {
 	beneficiary := viper.GetString("erc4337_bundler_beneficiary")
 	maxVerificationGas := big.NewInt(int64(viper.GetInt("erc4337_bundler_max_verification_gas")))
 	maxOpsForUnstakedSender := viper.GetInt("erc4337_bundler_max_ops_for_unstaked_sender")
+	relayerBannedThreshold := viper.GetInt("erc4337_bundler_relayer_banned_threshold")
+	relayerBannedTimeWindow := viper.GetInt("erc4337_bundler_relayer_banned_time_window") * int(time.Second)
 	ethBuilderUrl := viper.GetString("erc4337_bundler_eth_builder_url")
 	blocksInTheFuture := viper.GetInt("erc4337_bundler_blocks_in_the_future")
 	debugMode := viper.GetBool("erc4337_bundler_debug_mode")
@@ -138,6 +148,8 @@ func GetValues() *Values {
 		Beneficiary:             beneficiary,
 		MaxVerificationGas:      maxVerificationGas,
 		MaxOpsForUnstakedSender: maxOpsForUnstakedSender,
+		RelayerBannedThreshold:  relayerBannedThreshold,
+		RelayerBannedTimeWindow: time.Duration(relayerBannedTimeWindow),
 		EthBuilderUrl:           ethBuilderUrl,
 		BlocksInTheFuture:       blocksInTheFuture,
 		DebugMode:               debugMode,

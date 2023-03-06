@@ -71,6 +71,7 @@ func SearcherMode() {
 	}
 
 	check := checks.New(
+		db,
 		rpc,
 		conf.MaxVerificationGas,
 		conf.MaxOpsForUnstakedSender,
@@ -99,9 +100,11 @@ func SearcherMode() {
 	b := bundler.New(mem, chain, conf.SupportedEntryPoints)
 	b.UseLogger(logr)
 	b.UseModules(
+		check.CodeHashes(),
 		check.PaymasterDeposit(),
 		builder.SendUserOperation(),
 		paymaster.IncOpsIncluded(),
+		check.Clean(),
 	)
 	if err := b.Run(); err != nil {
 		log.Fatal(err)
@@ -111,6 +114,7 @@ func SearcherMode() {
 	var d *client.Debug
 	if conf.DebugMode {
 		d = client.NewDebug(eoa, eth, mem, b, chain, conf.SupportedEntryPoints[0], beneficiary)
+		b.SetMaxBatch(1)
 	}
 
 	// Init HTTP server
@@ -127,7 +131,11 @@ func SearcherMode() {
 	r.GET("/ping", func(g *gin.Context) {
 		g.Status(http.StatusOK)
 	})
-	r.POST("/", jsonrpc.Controller(client.NewRpcAdapter(c, d)))
+	handlers := []gin.HandlerFunc{
+		jsonrpc.Controller(client.NewRpcAdapter(c, d)),
+	}
+	r.POST("/", handlers...)
+	r.POST("/rpc", handlers...)
 	if err := r.Run(fmt.Sprintf(":%d", conf.Port)); err != nil {
 		log.Fatal(err)
 	}

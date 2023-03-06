@@ -9,7 +9,7 @@ A modular Go implementation of an ERC-4337 Bundler.
 
 # Running an instance
 
-See the `Bundler` documentation at [docs.stackup.sh](https://docs.stackup.sh/docs/category/bundler).
+See the `Bundler` documentation at [docs.stackup.sh](https://docs.stackup.sh/docs/packages/bundler/introduction).
 
 # Contributing
 
@@ -55,4 +55,4 @@ Distributed under the GPL-3.0 License. See [LICENSE](./LICENSE) for more informa
 
 # Contact
 
-Feel free to direct any technical related questions to the `dev-hub` channel in the [Stackup Discord](https://discord.gg/FpXmvKrNed).
+Feel free to direct any technical related questions to the `dev-hub` channel in the [Stackup Discord](https://discord.gg/VTjJGvMNyW).
